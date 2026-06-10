@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BodyShift — Tu mapa corporal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #F4EDE6;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.app {
+  width: 390px;
+  background: #FDFAF7;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(27,42,74,0.12);
+  min-height: 680px;
+  display: flex;
+  flex-direction: column;
+}
+.header {
+  background: #1B2A4A;
+  padding: 20px 22px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo { font-family: 'DM Serif Display', serif; color: #fff; font-size: 22px; letter-spacing: -0.3px; }
+.header-sub { color: #7A95BB; font-size: 12px; margin-top: 1px; }
+.content { flex: 1; overflow-y: auto; }
+.screen { display: none; padding: 22px; }
+.screen.active { display: block; }
+
+/* Progress */
+.progress-wrap { margin-bottom: 22px; }
+.progress-bar { height: 3px; background: #E8E0D8; border-radius: 2px; }
+.progress-fill { height: 3px; background: #C4644A; border-radius: 2px; transition: width 0.35s ease; }
+.progress-text { font-size: 11px; color: #A09080; margin-bottom: 8px; letter-spacing: 0.4px; text-transform: uppercase; }
+
+/* Quiz */
+.q-text { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1B2A4A; line-height: 1.35; margin-bottom: 22px; }
+.options { display: flex; flex-direction: column; gap: 9px; }
+.opt {
+  padding: 13px 16px;
+  border: 1px solid #E0D5CC;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #3A3028;
+  background: #FDFAF7;
+  transition: all 0.15s;
+  text-align: left;
+  font-family: 'DM Sans', sans-serif;
+}
+.opt:hover { border-color: #C4644A; background: #FDF0EB; }
+.opt.selected { border-color: #C4644A; background: #FDF0EB; color: #C4644A; font-weight: 500; }
+
+/* Buttons */
+.btn-primary {
+  width: 100%; margin-top: 20px; padding: 14px;
+  background: #1B2A4A; color: #fff; border: none;
+  border-radius: 12px; font-size: 15px; font-weight: 500;
+  cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s;
+}
+.btn-primary:hover { background: #243761; }
+.btn-primary:disabled { background: #CCC4BB; cursor: not-allowed; }
+.btn-outline {
+  width: 100%; margin-top: 10px; padding: 12px;
+  background: transparent; color: #8A7A6A;
+  border: 1px solid #E0D5CC; border-radius: 12px;
+  font-size: 14px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+}
+.btn-outline:hover { border-color: #C4644A; color: #C4644A; }
+
+/* Welcome */
+.welcome { text-align: center; padding: 10px 4px; }
+.welcome-icon {
+  width: 72px; height: 72px; background: #FDF0EB; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px; font-size: 32px;
+}
+.welcome h2 { font-family: 'DM Serif Display', serif; font-size: 26px; color: #1B2A4A; line-height: 1.25; margin-bottom: 12px; }
+.welcome p { font-size: 14px; color: #6A5A4A; line-height: 1.65; margin-bottom: 18px; }
+.pills { display: flex; gap: 7px; justify-content: center; flex-wrap: wrap; margin-bottom: 22px; }
+.pill { padding: 5px 12px; border-radius: 20px; font-size: 12px; background: #F0E8E0; color: #6A5A4A; border: 1px solid #E0D5CC; }
+.disclaimer { font-size: 12px; color: #A09080; margin-top: 10px; line-height: 1.5; }
+
+/* Section titles */
+.section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1B2A4A; margin-bottom: 4px; }
+.section-sub { font-size: 13px; color: #8A7A6A; margin-bottom: 16px; }
+
+/* FASE DEL CICLO — bloque principal */
+.cycle-phase-block {
+  background: linear-gradient(135deg, #1B2A4A 0%, #2A3F6A 100%);
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  color: #fff;
+}
+.cpb-label { font-size: 11px; color: #7A95BB; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.cpb-phase { font-family: 'DM Serif Display', serif; font-size: 20px; color: #fff; margin-bottom: 4px; }
+.cpb-desc { font-size: 12px; color: #A8C0DC; line-height: 1.5; margin-bottom: 12px; }
+.phase-track { display: flex; gap: 4px; margin-bottom: 8px; }
+.phase-dot {
+  flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2);
+}
+.phase-dot.active { background: #C4644A; }
+.phase-dot.done { background: rgba(255,255,255,0.5); }
+.phase-names { display: flex; justify-content: space-between; }
+.phase-names span { font-size: 10px; color: #7A95BB; }
+
+/* Map metrics */
+.map-item {
+  padding: 14px 16px; border-radius: 14px; margin-bottom: 10px;
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.map-icon {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 18px;
+}
+.map-label { font-size: 13px; font-weight: 500; color: #1B2A4A; }
+.map-detail { font-size: 12px; color: #8A7A6A; margin-top: 2px; line-height: 1.4; }
+.map-context { font-size: 11px; color: #A09080; margin-top: 5px; font-style: italic; line-height: 1.4; padding: 5px 8px; background: rgba(0,0,0,0.04); border-radius: 6px; }
+.map-score { margin-left: auto; text-align: right; flex-shrink: 0; }
+.score-num { font-size: 22px; font-weight: 500; }
+.score-bar { width: 48px; height: 3px; background: #E8E0D8; border-radius: 2px; margin-top: 4px; margin-left: auto; }
+.score-bar-fill { height: 3px; border-radius: 2px; }
+.score-lbl { font-size: 10px; color: #A09080; margin-top: 2px; }
+
+/* Doctor CTA */
+.doctor-cta {
+  background: #F0E8E0; border-radius: 14px;
+  padding: 14px 16px; margin-top: 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.doctor-cta-icon { font-size: 24px; }
+.doctor-cta-text { font-size: 13px; color: #3A3028; line-height: 1.5; flex: 1; }
+.doctor-cta-text strong { color: #1B2A4A; }
+.btn-doc {
+  padding: 8px 14px; background: #1B2A4A; color: #fff;
+  border: none; border-radius: 10px; font-size: 12px;
+  cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap;
+}
+
+/* Protocol */
+.day-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.day-pill {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid #E0D5CC;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #A09080; cursor: pointer; transition: all 0.15s;
+}
+.day-pill.done { background: #1B2A4A; color: #fff; border-color: #1B2A4A; }
+.day-pill.today { background: #C4644A; color: #fff; border-color: #C4644A; }
+.proto-label { font-size: 11px; color: #A09080; text-transform: uppercase; letter-spacing: 0.5px; margin: 14px 0 8px; }
+.proto-card { padding: 14px 16px; border: 1px solid #E8E0D8; border-radius: 14px; margin-bottom: 10px; background: #FDFAF7; }
+.proto-day { font-size: 11px; color: #A09080; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+.proto-title { font-size: 15px; font-weight: 500; color: #1B2A4A; margin-bottom: 6px; }
+.proto-text { font-size: 13px; color: #6A5A4A; line-height: 1.55; }
+.tag { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; margin-top: 8px; margin-right: 4px; }
+.tag-sleep { background: #E8F0FA; color: #2B5DA5; }
+.tag-energy { background: #E8F3E0; color: #3A6A10; }
+.tag-cycle { background: #FBEAF0; color: #8A2545; }
+.tag-recovery { background: #FDF0EB; color: #993C1D; }
+.tag-mental { background: #F4EEF8; color: #6B3FA0; }
+
+/* Nav */
+.nav { display: flex; border-top: 1px solid #EDE5DC; background: #FDFAF7; }
+.nav-btn {
+  flex: 1; padding: 12px 0; border: none; background: transparent;
+  font-size: 11px; color: #A09080; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-family: 'DM Sans', sans-serif; transition: color 0.15s;
+}
+.nav-btn svg { width: 20px; height: 20px; stroke-width: 1.5; }
+.nav-btn.active { color: #C4644A; }
+
+/* Irregular cycle info */
+.info-box {
+  background: #FDF0EB; border: 1px solid #E8C4B4;
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;
+  font-size: 13px; color: #6A3A28; line-height: 1.55;
+}
+.info-box strong { color: #C4644A; }
+
+/* Trial banner */
+.trial-banner {
+  display: none;
+  background: #FDF0EB;
+  border-bottom: 1px solid #F0DCD2;
+  padding: 9px 22px;
+  font-size: 12px; color: #993C1D;
+  align-items: center; justify-content: space-between;
+}
+.trial-banner.show { display: flex; }
+.trial-banner a { color: #C4644A; font-weight: 500; cursor: pointer; text-decoration: underline; }
+.trial-banner.premium { background: #EBF5EE; border-color: #CEEBD3; color: #3A6A10; }
+
+/* Locked protocol cards */
+.proto-card.locked { position: relative; overflow: hidden; }
+.proto-card.locked .proto-title,
+.proto-card.locked .proto-text { filter: blur(4px); user-select: none; pointer-events: none; }
+.lock-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; background: rgba(253,250,247,0.55); cursor: pointer;
+}
+.lock-overlay svg { width: 18px; height: 18px; stroke: #C4644A; }
+.lock-overlay span { font-size: 12px; color: #C4644A; font-weight: 500; }
+.day-pill.locked { opacity: 0.35; }
+
+/* Paywall */
+.paywall { text-align: center; padding: 6px 2px; }
+.paywall h2 { font-family: 'DM Serif Display', serif; font-size: 24px; color: #1B2A4A; line-height: 1.3; margin-bottom: 8px; }
+.paywall .pw-sub { font-size: 13px; color: #8A7A6A; margin-bottom: 18px; line-height: 1.55; }
+.price-card {
+  background: linear-gradient(135deg, #1B2A4A 0%, #2A3F6A 100%);
+  border-radius: 16px; padding: 20px 18px; color: #fff; margin-bottom: 14px;
+}
+.price-tag { font-size: 11px; color: #E8A78F; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+.price-num { font-family: 'DM Serif Display', serif; font-size: 38px; }
+.price-num small { font-size: 15px; font-family: 'DM Sans', sans-serif; color: #A8C0DC; }
+.price-old { font-size: 13px; color: #7A95BB; text-decoration: line-through; margin-top: 2px; }
+.benefits { text-align: left; margin: 16px 0 4px; }
+.benefit { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; font-size: 13px; color: #3A3028; line-height: 1.5; }
+.benefit svg { width: 16px; height: 16px; stroke: #3A6A10; flex-shrink: 0; margin-top: 2px; }
+.pw-fine { font-size: 11px; color: #A09080; margin-top: 12px; line-height: 1.5; }
+
+/* Deep dive — Ciencia */
+.sci-card {
+  border: 1px solid #E8E0D8; border-radius: 14px;
+  margin-bottom: 10px; background: #FDFAF7; overflow: hidden;
+  position: relative;
+}
+.sci-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; cursor: pointer;
+}
+.sci-icon {
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.sci-title { font-size: 14px; font-weight: 500; color: #1B2A4A; flex: 1; line-height: 1.35; }
+.sci-chevron { width: 16px; height: 16px; stroke: #A09080; transition: transform 0.2s; flex-shrink: 0; }
+.sci-card.open .sci-chevron { transform: rotate(180deg); }
+.sci-body { display: none; padding: 0 16px 14px; font-size: 13px; color: #6A5A4A; line-height: 1.6; }
+.sci-card.open .sci-body { display: block; }
+.sci-body strong { color: #1B2A4A; }
+.sci-action {
+  margin-top: 10px; padding: 9px 12px; background: #FDF0EB;
+  border-radius: 10px; font-size: 12px; color: #993C1D; line-height: 1.5;
+}
+.sci-action strong { color: #C4644A; }
+.sci-ref { font-size: 11px; color: #A09080; margin-top: 8px; font-style: italic; }
+.sci-card.locked .sci-head { opacity: 0.75; }
+.sci-quote {
+  background: linear-gradient(135deg, #1B2A4A 0%, #2A3F6A 100%);
+  border-radius: 16px; padding: 18px; margin-bottom: 16px; color: #fff;
+}
+.sci-quote-text { font-family: 'DM Serif Display', serif; font-size: 17px; font-style: italic; line-height: 1.45; margin-bottom: 8px; }
+.sci-quote-author { font-size: 12px; color: #A8C0DC; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="logo">BodyShift</div>
+      <div class="header-sub">para mujeres 35+</div>
+    </div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="#7A95BB" stroke-width="1.5" width="22" height="22">
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
+    </svg>
+  </div>
+
+  <div class="trial-banner" id="trial-banner">
+    <span id="trial-text"></span>
+    <a onclick="showPaywall()">Ver Premium</a>
+  </div>
+
+  <div class="content">
+
+    <!-- BIENVENIDA -->
+    <div id="screen-welcome" class="screen active">
+      <div class="welcome">
+        <div class="welcome-icon">
+          <svg viewBox="0 0 32 32" fill="none" stroke="#C4644A" stroke-width="1.8" width="32" height="32">
+            <circle cx="16" cy="16" r="12"/>
+            <path d="M16 10v6l4 2"/>
+          </svg>
+        </div>
+        <h2>Tu cuerpo cambió.<br><em>Descubre por qué.</em></h2>
+        <p>Un quiz de 7 minutos para entender los cambios en tu sueño, energía, ciclo y recuperación — con un plan basado en tu fisiología real.</p>
+        <div class="pills">
+          <span class="pill">Sin dietas</span>
+          <span class="pill">Basado en evidencia</span>
+          <span class="pill">En español</span>
+          <span class="pill">Stacy Sims method</span>
+        </div>
+        <button class="btn-primary" onclick="startQuiz()">Empezar mi mapa corporal</button>
+        <p class="disclaimer">No somos médicos. Te ayudamos a entender patrones<br>y prepararte para tu consulta.</p>
+      </div>
+    </div>
+
+    <!-- QUIZ -->
+    <div id="screen-quiz" class="screen">
+      <div class="progress-wrap">
+        <div class="progress-text" id="q-num">Pregunta 1 de 7</div>
+        <div class="progress-bar"><div class="progress-fill" id="progress" style="width:14%"></div></div>
+      </div>
+      <div class="q-text" id="q-text"></div>
+      <div class="options" id="q-options"></div>
+      <button class="btn-primary" id="btn-next" onclick="nextQ()" disabled>Continuar</button>
+    </div>
+
+    <!-- MAPA CORPORAL -->
+    <div id="screen-map" class="screen">
+      <div class="section-title">Tu mapa corporal</div>
+      <div class="section-sub">Patrones identificados según tus respuestas</div>
+
+      <!-- BLOQUE FASE CICLO — primero y más visible -->
+      <div class="cycle-phase-block" id="cycle-phase-block">
+        <div class="cpb-label">Fase del ciclo ahora</div>
+        <div class="cpb-phase" id="cpb-phase-name">—</div>
+        <div class="cpb-desc" id="cpb-phase-desc">—</div>
+        <div class="phase-track" id="phase-track">
+          <div class="phase-dot" id="pd-0"></div>
+          <div class="phase-dot" id="pd-1"></div>
+          <div class="phase-dot" id="pd-2"></div>
+          <div class="phase-dot" id="pd-3"></div>
+        </div>
+        <div class="phase-names">
+          <span>Menstrual</span><span>Folicular</span><span>Ovulación</span><span>Lútea</span>
+        </div>
+      </div>
+
+      <!-- Método Sims para esta fase -->
+      <div class="proto-label" style="margin-top:2px">Método Sims para esta fase</div>
+      <div id="sims-recs"></div>
+
+      <!-- Info para ciclo irregular -->
+      <div id="irregular-info" style="display:none">
+        <div class="info-box">
+          <strong>Ciclo irregular o ausente</strong> — Tu cuerpo puede estar cambiando antes de que los análisis lo reflejen. Esto es normal en la transición hormonal después de los 35. El plan está adaptado para trabajar sin necesidad de fase definida.
+        </div>
+      </div>
+
+      <!-- Sueño -->
+      <div class="map-item" style="background:#EEF3FA;">
+        <div class="map-icon" style="background:#D8E8F5;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2B5DA5" stroke-width="1.8" width="20" height="20"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </div>
+        <div style="flex:1">
+          <div class="map-label">Sueño y recuperación</div>
+          <div class="map-detail" id="sleep-detail">—</div>
+          <div class="map-context" id="sleep-context"></div>
+        </div>
+        <div class="map-score">
+          <div class="score-num" id="sleep-score" style="color:#2B5DA5">—</div>
+          <div class="score-bar"><div class="score-bar-fill" id="sleep-bar" style="background:#2B5DA5"></div></div>
+          <div class="score-lbl" id="sleep-lbl">—</div>
+        </div>
+      </div>
+
+      <!-- Energía -->
+      <div class="map-item" style="background:#EBF5EE;">
+        <div class="map-icon" style="background:#CEEBD3;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#3A6A10" stroke-width="1.8" width="20" height="20"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div style="flex:1">
+          <div class="map-label">Energía y metabolismo</div>
+          <div class="map-detail" id="energy-detail">—</div>
+          <div class="map-context" id="energy-context"></div>
+        </div>
+        <div class="map-score">
+          <div class="score-num" id="energy-score" style="color:#3A6A10">—</div>
+          <div class="score-bar"><div class="score-bar-fill" id="energy-bar" style="background:#3A6A10"></div></div>
+          <div class="score-lbl" id="energy-lbl">—</div>
+        </div>
+      </div>
+
+      <!-- Recuperación -->
+      <div class="map-item" style="background:#FDF0EB;">
+        <div class="map-icon" style="background:#FADDD2;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#C4644A" stroke-width="1.8" width="20" height="20"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        </div>
+        <div style="flex:1">
+          <div class="map-label">Recuperación física</div>
+          <div class="map-detail" id="recovery-detail">—</div>
+          <div class="map-context" id="recovery-context"></div>
+        </div>
+        <div class="map-score">
+          <div class="score-num" id="recovery-score" style="color:#C4644A">—</div>
+          <div class="score-bar"><div class="score-bar-fill" id="recovery-bar" style="background:#C4644A"></div></div>
+          <div class="score-lbl" id="recovery-lbl">—</div>
+        </div>
+      </div>
+
+      <!-- Foco -->
+      <div class="map-item" style="background:#F4EEF8;">
+        <div class="map-icon" style="background:#E5D5F0;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#6B3FA0" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+        </div>
+        <div style="flex:1">
+          <div class="map-label">Foco y estado mental</div>
+          <div class="map-detail" id="focus-detail">—</div>
+          <div class="map-context" id="focus-context"></div>
+        </div>
+        <div class="map-score">
+          <div class="score-num" id="focus-score" style="color:#6B3FA0">—</div>
+          <div class="score-bar"><div class="score-bar-fill" id="focus-bar" style="background:#6B3FA0"></div></div>
+          <div class="score-lbl" id="focus-lbl">—</div>
+        </div>
+      </div>
+
+      <!-- Doctor CTA -->
+      <div class="doctor-cta">
+        <div class="doctor-cta-icon">🩺</div>
+        <div class="doctor-cta-text"><strong>Resumen para tu médica</strong><br>Lleva este mapa a tu próxima consulta preparada.</div>
+        <button class="btn-doc" onclick="downloadDoctorPDF()">Generar PDF</button>
+      </div>
+
+      <button class="btn-primary" style="margin-top:14px" onclick="goProtocol()">Ver mi plan de 14 días →</button>
+    </div>
+
+    <!-- PROTOCOLO -->
+    <div id="screen-protocol" class="screen">
+      <div class="section-title">Plan 14 días</div>
+      <div class="section-sub" id="proto-sub">Sincronizado con tu fase del ciclo</div>
+
+      <div class="proto-label">Tu progreso</div>
+      <div class="day-row" id="day-row"></div>
+
+      <div class="proto-label">Hoy — día <span id="today-num">1</span></div>
+      <div id="today-card"></div>
+
+      <div class="proto-label">Próximos días</div>
+      <div id="next-cards"></div>
+    </div>
+
+    <!-- CIENCIA — deep dive biología femenina -->
+    <div id="screen-science" class="screen">
+      <div class="section-title">La ciencia de tu cuerpo</div>
+      <div class="section-sub">Biología femenina 35+ explicada — método Stacy Sims</div>
+
+      <div class="sci-quote">
+        <div class="sci-quote-text">"Women are not small men."</div>
+        <div class="sci-quote-author">Dra. Stacy Sims — fisióloga del ejercicio, Stanford</div>
+      </div>
+
+      <div id="sci-cards"></div>
+    </div>
+
+    <!-- PAYWALL / PREMIUM -->
+    <div id="screen-paywall" class="screen">
+      <div class="paywall">
+        <h2>Tu cuerpo no es genérico.<br><em>Tu plan tampoco.</em></h2>
+        <p class="pw-sub">Has visto tu mapa corporal y la primera semana gratis. El plan completo se sincroniza con tu fase del ciclo durante los 14 días — con dosis, protocolos y la ciencia detrás de cada recomendación.</p>
+
+        <div class="price-card">
+          <div class="price-tag">Precio fundadora · Beta</div>
+          <div class="price-num">29&nbsp;€ <small>/ 3 meses</small></div>
+          <div class="price-old">Después de la beta: 49 €</div>
+        </div>
+
+        <div class="benefits">
+          <div class="benefit">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            <span><strong>Plan completo de 14 días</strong> sincronizado con tu fase — entrenamiento, sueño, nutrición y suplementación con dosis concretas.</span>
+          </div>
+          <div class="benefit">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            <span><strong>Resumen PDF para tu médica</strong> con tus patrones y los marcadores que pedir (ferritina, vitamina D, TSH).</span>
+          </div>
+          <div class="benefit">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            <span><strong>Protocolos que se actualizan con tu ciclo</strong> — cada fase nueva, recomendaciones nuevas.</span>
+          </div>
+          <div class="benefit">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            <span><strong>Acceso anticipado</strong> a nuevas funciones de la beta y voz directa en lo que construimos.</span>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="activatePremium()">Activar Premium — 29 €</button>
+        <button class="btn-outline" onclick="goProtocol()">Seguir con la versión gratuita</button>
+        <p class="pw-fine">Sin permanencia. Cancela cuando quieras.<br>Basado en evidencia — sin venderte suplementos.</p>
+      </div>
+    </div>
+
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" id="nav-home" onclick="navTo('welcome','nav-home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Inicio
+    </button>
+    <button class="nav-btn" id="nav-quiz" onclick="navTo('quiz','nav-quiz')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Quiz
+    </button>
+    <button class="nav-btn" id="nav-map" onclick="navTo('map','nav-map')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+      Mi mapa
+    </button>
+    <button class="nav-btn" id="nav-proto" onclick="navTo('protocol','nav-proto')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Plan
+    </button>
+    <button class="nav-btn" id="nav-sci" onclick="navTo('science','nav-sci')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 3h6M10 3v6.5L4.5 19a2 2 0 001.8 3h11.4a2 2 0 001.8-3L14 9.5V3"/></svg>
+      Ciencia
+    </button>
+  </div>
+</div>
+
+<script>
+/* ============ MONETIZACIÓN: prueba gratis + premium ============ */
+const FREE_DAYS = 7; // días del protocolo visibles gratis
+
+function store(key, val) { try { localStorage.setItem(key, val); } catch(e) {} }
+function read(key) { try { return localStorage.getItem(key); } catch(e) { return null; } }
+
+function isPremium() { return read('bs_premium') === '1'; }
+
+function startTrialIfNeeded() {
+  if (!read('bs_trial_start')) store('bs_trial_start', Date.now().toString());
+}
+
+// Día actual de la prueba (1 = primer día). Si no hay prueba iniciada, devuelve 0.
+function trialDay() {
+  const t = read('bs_trial_start');
+  if (!t) return 0;
+  return Math.floor((Date.now() - parseInt(t, 10)) / 86400000) + 1;
+}
+
+function trialActive() { return trialDay() >= 1 && trialDay() <= FREE_DAYS; }
+
+function updateTrialBanner() {
+  const banner = document.getElementById('trial-banner');
+  const txt = document.getElementById('trial-text');
+  if (isPremium()) {
+    banner.className = 'trial-banner show premium';
+    banner.innerHTML = '<span>Premium activo — plan completo desbloqueado</span>';
+    return;
+  }
+  if (trialDay() === 0) { banner.className = 'trial-banner'; return; }
+  banner.className = 'trial-banner show';
+  if (trialActive()) {
+    txt.textContent = 'Prueba gratis: día ' + trialDay() + ' de ' + FREE_DAYS;
+  } else {
+    txt.textContent = 'Tu prueba gratis ha terminado';
+  }
+}
+
+function showPaywall() {
+  showScreen('paywall');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+}
+
+function activatePremium() {
+  // PROTOTIPO: aquí iría el checkout real (Stripe / Lemon Squeezy).
+  // Por ahora simula el pago y desbloquea el contenido.
+  store('bs_premium', '1');
+  updateTrialBanner();
+  buildScience();
+  if (answers.length >= 7) { buildProtocol(); }
+  goProtocol();
+}
+
+function downloadDoctorPDF() {
+  if (!isPremium()) { showPaywall(); return; }
+  alert('PDF generado con tus datos');
+}
+
+// Parámetros de demo: ?reset=1 borra estado, ?premium=1 activa premium
+(function() {
+  const p = new URLSearchParams(location.search);
+  if (p.get('reset') === '1') { try { localStorage.removeItem('bs_premium'); localStorage.removeItem('bs_trial_start'); } catch(e) {} }
+  if (p.get('premium') === '1') store('bs_premium', '1');
+})();
+/* =============================================================== */
+
+const questions = [
+  { text: "¿En qué fase de tu ciclo estás aproximadamente?", opts: ["Semana 1 — menstruación", "Semana 2 — fase folicular", "Semana 3 — ovulación", "Semana 4 — fase lútea", "Ciclo irregular o no tengo ciclo"] },
+  { text: "¿Cómo describirías tu sueño en los últimos 30 días?", opts: ["Duermo bien y me despierto descansada", "Me cuesta conciliar el sueño", "Me despierto a las 3–4h sin poder volver a dormir", "Siento que nunca descanso aunque duerma 8h"] },
+  { text: "¿Cómo es tu energía a lo largo del día?", opts: ["Estable durante todo el día", "Pico por la mañana, caída fuerte por la tarde", "Baja desde que me levanto", "Varía mucho según la semana del ciclo"] },
+  { text: "¿Has notado cambios en tu recuperación tras el ejercicio?", opts: ["Recupero igual que antes", "Tardo más en recuperarme", "Siento más inflamación o dolores musculares", "He tenido que reducir la intensidad sin querer"] },
+  { text: "¿Tienes episodios de brain fog o dificultad para concentrarte?", opts: ["No, tengo claridad mental", "Ocasionalmente, sobre todo premenstrual", "Frecuentemente, sin relación con el ciclo", "Es constante y afecta mi trabajo"] },
+  { text: "¿Tu peso o composición corporal ha cambiado sin cambiar tus hábitos?", opts: ["No he notado cambios", "Ligero aumento en la zona media", "Cambios visibles aunque como bien y entreno", "Fluctúa mucho según la semana"] },
+  { text: "¿Qué área quieres priorizar?", opts: ["Mejorar el sueño y la recuperación", "Entender mi ciclo y hormonas", "Recuperar energía estable", "Todo lo anterior por igual"] }
+];
+
+let current = 0;
+let answers = [];
+let selectedOpt = null;
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+function startQuiz() {
+  showScreen('quiz'); renderQ();
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-quiz').classList.add('active');
+}
+
+function navTo(screen, navId) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(navId).classList.add('active');
+  if ((screen === 'map' || screen === 'protocol') && answers.length < 7) { showScreen('quiz'); renderQ(); return; }
+  showScreen(screen);
+}
+
+function goProtocol() {
+  showScreen('protocol');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-proto').classList.add('active');
+}
+
+function renderQ() {
+  const q = questions[current];
+  document.getElementById('q-num').textContent = 'Pregunta ' + (current+1) + ' de 7';
+  document.getElementById('q-text').textContent = q.text;
+  document.getElementById('progress').style.width = (((current+1)/7)*100) + '%';
+  selectedOpt = answers[current] !== undefined ? answers[current] : null;
+  const c = document.getElementById('q-options');
+  c.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt' + (selectedOpt === i ? ' selected' : '');
+    btn.textContent = opt;
+    btn.onclick = () => selectOpt(i);
+    c.appendChild(btn);
+  });
+  document.getElementById('btn-next').disabled = selectedOpt === null;
+}
+
+function selectOpt(i) {
+  selectedOpt = i;
+  document.querySelectorAll('.opt').forEach((b, idx) => b.classList.toggle('selected', idx === i));
+  document.getElementById('btn-next').disabled = false;
+}
+
+function nextQ() {
+  if (selectedOpt === null) return;
+  answers[current] = selectedOpt;
+  if (current < 6) { current++; renderQ(); }
+  else { startTrialIfNeeded(); updateTrialBanner(); buildMap(); buildProtocol(); showScreen('map'); document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); document.getElementById('nav-map').classList.add('active'); }
+}
+
+function setScore(id, val, color) {
+  document.getElementById(id + '-score').textContent = val + '%';
+  document.getElementById(id + '-bar').style.width = val + '%';
+}
+
+function buildMap() {
+  const isIrregular = answers[0] === 4;
+
+  // Fase del ciclo — bloque principal
+  const phaseData = [
+    { name: "Menstruación", desc: "Estrógeno y progesterona bajos. Prioriza descanso, antiinflamatorios naturales y movimiento suave.", active: 0 },
+    { name: "Fase folicular", desc: "Estrógeno en ascenso. Mejor momento para entrenar fuerte, ayuno corto y nuevos hábitos.", active: 1 },
+    { name: "Ovulación", desc: "Pico de estrógeno y testosterona. Máxima energía y fuerza disponible.", active: 2 },
+    { name: "Fase lútea", desc: "Progesterona alta. Metabolismo +100–300 kcal/día. Gestiona cortisol y sueño con más cuidado.", active: 3 },
+    { name: "Ciclo irregular", desc: "Tu cuerpo puede estar en transición hormonal. Esto es normal después de los 35 — no necesitas fase definida para mejorar.", active: -1 }
+  ];
+  const phase = phaseData[answers[0]];
+  document.getElementById('cpb-phase-name').textContent = phase.name;
+  document.getElementById('cpb-phase-desc').textContent = phase.desc;
+  document.getElementById('irregular-info').style.display = isIrregular ? 'block' : 'none';
+
+  // Actualiza los dots de la barra de fases
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd-' + i);
+    dot.className = 'phase-dot';
+    if (!isIrregular) {
+      if (i < phase.active) dot.classList.add('done');
+      else if (i === phase.active) dot.classList.add('active');
+    }
+  }
+
+  // Contextos por fase para cada métrica
+  const phaseContexts = [
+    { sleep: "En menstruación el sueño suele ser más ligero por el descenso hormonal.", energy: "Energía naturalmente más baja. No fuerces — es fisiológico.", recovery: "Fase de restauración. Prioriza movilidad sobre intensidad.", focus: "La concentración puede fluctuar. Tareas creativas funcionan bien ahora." },
+    { sleep: "Fase folicular: sueño generalmente más sólido y reparador.", energy: "Estrógeno en ascenso — buen momento para entrenar fuerte y hacer ayuno corto.", recovery: "Recuperación óptima. Puedes aumentar la intensidad del entrenamiento.", focus: "Claridad mental en aumento. Ideal para proyectos complejos." },
+    { sleep: "El pico hormonal puede generar algo de insomnio leve en algunas mujeres.", energy: "Máxima energía del ciclo. Aprovecha para objetivos de rendimiento.", recovery: "Recuperación excelente. Entrena con fuerza.", focus: "Pico cognitivo. Máxima concentración y sociabilidad." },
+    { sleep: "Progesterona alta puede causar despertares nocturnos — especialmente entre las 3–4h.", energy: "Metabolismo +100–300 kcal. El hambre que sientes es fisiológica, no falta de disciplina.", recovery: "Cortisol más elevado. Baños de hielo y ayuno prolongado pueden sumar estrés.", focus: "Brain fog premenstrual es normal. Reduce carga cognitiva los últimos días." },
+    { sleep: "Sin fase definida, los patrones de sueño pueden ser más variables.", energy: "Trabajamos con tu patrón real, no con un ciclo teórico.", recovery: "Escucha más las señales de tu cuerpo — son más variables entre semanas.", focus: "La variabilidad en el foco puede ser señal de transición hormonal." }
+  ];
+  const ctx = phaseContexts[answers[0]] || phaseContexts[4];
+
+  // Recomendaciones método Sims por fase: entrenamiento / nutrición / recuperación
+  const simsRecs = [
+    [ ["🏋","Entrena","Movilidad, técnica y zona 2. Si te sientes bien, fuerza moderada — la regla no es obligatorio descanso."],
+      ["🍽","Come","Hierro + vitamina C (lentejas con pimiento, carne con cítricos). Omega-3 como antiinflamatorio natural."],
+      ["😴","Recupera","Prioriza sueño. Calor local para el dolor mejor que antiinflamatorios crónicos."] ],
+    [ ["🏋","Entrena","Tu mejor ventana: fuerza pesada, sprints, récords personales. El estrógeno acelera la recuperación."],
+      ["🍽","Come","Buen momento para ayuno corto (12–14 h) y nuevos hábitos — la sensibilidad a la insulina está en máximo."],
+      ["😴","Recupera","Ducha fría post-entreno bien tolerada. Carga alta de entrenamiento sostenible esta semana."] ],
+    [ ["🏋","Entrena","Pico de fuerza y potencia. Cuidado con tendones y ligamentos: el estrógeno alto los hace más laxos — calienta bien."],
+      ["🍽","Come","30–40 g de proteína post-entreno. Aprovecha el apetito estable para consolidar el patrón de comidas."],
+      ["😴","Recupera","Posible insomnio leve por el pico hormonal — mantén la rutina de luz y temperatura."] ],
+    [ ["🏋","Entrena","Baja intensidad, no volumen: zona 2, fuerza técnica, yoga. Evita récords — la fuerza cae 10–20% y es normal."],
+      ["🍽","Come","Tu metabolismo quema +100–300 kcal/día: el hambre es real. Suma proteína y carbohidrato complejo, no lo pelees."],
+      ["😴","Recupera","Sin baños de hielo largos ni ayunos. Magnesio 300 mg, café solo hasta las 13 h, dormitorio a 18 °C."] ],
+    [ ["🏋","Entrena","Guíate por tu energía real, no por el calendario: días buenos = fuerza pesada; días bajos = zona 2."],
+      ["🍽","Come","Patrón estable de proteína (30 g/comida) — es el ancla cuando las hormonas no dan señal clara."],
+      ["😴","Recupera","Registra sueño y energía 4 semanas: tu patrón individual sustituye a la fase teórica."] ]
+  ];
+  const recs = simsRecs[answers[0]] || simsRecs[4];
+  document.getElementById('sims-recs').innerHTML = recs.map(r =>
+    `<div class="proto-card" style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="font-size:18px;flex-shrink:0">${r[0]}</div>
+      <div><div class="proto-title" style="font-size:13px;margin-bottom:3px">${r[1]}</div>
+      <div class="proto-text" style="font-size:12.5px">${r[2]}</div></div>
+    </div>`
+  ).join('');
+
+  // Sueño
+  const sData = [[88,"Óptimo","Tu patrón de sueño es estable"],[55,"Moderado","Dificultad para iniciar el sueño"],[42,"Bajo","Despertares 3–4h — patrón de cortisol"],[38,"Crítico","Sueño no reparador — revisar ferritina y vitamina D"]];
+  const s = sData[answers[1]] || sData[0];
+  document.getElementById('sleep-detail').textContent = s[2];
+  document.getElementById('sleep-context').textContent = ctx.sleep;
+  setScore('sleep', s[0]);
+  document.getElementById('sleep-lbl').textContent = s[1];
+  document.getElementById('sleep-bar').style.width = s[0] + '%';
+
+  // Energía
+  const eData = [[92,"Óptimo","Metabolismo estable"],[60,"Moderado","Bajada vespertina — glucosa y cortisol"],[35,"Bajo","Fatiga — revisar ferritina y vitamina D"],[70,"Variable","Dependiente del ciclo — normal con estrategia"]];
+  const e = eData[answers[2]] || eData[0];
+  document.getElementById('energy-detail').textContent = e[2];
+  document.getElementById('energy-context').textContent = ctx.energy;
+  document.getElementById('energy-score').textContent = e[0] + '%';
+  document.getElementById('energy-lbl').textContent = e[1];
+  document.getElementById('energy-bar').style.width = e[0] + '%';
+
+  // Recuperación
+  const rData = [[90,"Óptimo","Recuperas bien tras el ejercicio"],[68,"Moderado","Tardas más de lo habitual"],[55,"Bajo","Inflamación y dolores frecuentes"],[45,"Atención","Reducción involuntaria de intensidad"]];
+  const r = rData[answers[3]] || rData[0];
+  document.getElementById('recovery-detail').textContent = r[2];
+  document.getElementById('recovery-context').textContent = ctx.recovery;
+  document.getElementById('recovery-score').textContent = r[0] + '%';
+  document.getElementById('recovery-lbl').textContent = r[1];
+  document.getElementById('recovery-bar').style.width = r[0] + '%';
+
+  // Foco
+  const fData = [[90,"Óptimo","Claridad mental mantenida"],[68,"Leve","Brain fog premenstrual — normal con protocolo"],[48,"Moderado","Brain fog frecuente — revisar vitamina D"],[30,"Alto","Brain fog crónico — consulta recomendada"]];
+  const f = fData[answers[4]] || fData[0];
+  document.getElementById('focus-detail').textContent = f[2];
+  document.getElementById('focus-context').textContent = ctx.focus;
+  document.getElementById('focus-score').textContent = f[0] + '%';
+  document.getElementById('focus-lbl').textContent = f[1];
+  document.getElementById('focus-bar').style.width = f[0] + '%';
+}
+
+const protocolData = [
+  { day:1, title:"Calibración inicial", text:"Observa tu energía en 3 momentos del día. Sin cambios todavía — solo datos de tu patrón actual.", tag:"energy", tagLabel:"Energía" },
+  { day:2, title:"Sueño: temperatura y luz", text:"Reduce la luz artificial 1h antes de dormir. Baja la temperatura del dormitorio a 18–20°C.", tag:"sleep", tagLabel:"Sueño" },
+  { day:3, title:"Movimiento según tu fase", text:"Fase folicular u ovulación: entrena fuerte. Fase lútea o menstrual: movilidad y cardio zona 2.", tag:"recovery", tagLabel:"Recuperación" },
+  { day:4, title:"Magnesio y glucosa estable", text:"300mg magnesio glicinato por la noche. Desayuna proteína antes que carbohidratos.", tag:"energy", tagLabel:"Energía" },
+  { day:5, title:"Marcadores para tu médica", text:"Basado en tus respuestas pide: ferritina, vitamina D y TSH. Lleva el resumen generado.", tag:"cycle", tagLabel:"Ciclo" },
+  { day:6, title:"Recuperación activa", text:"10 min de respiración diafragmática. Ducha fría 30 seg solo en fase folicular o post-ovulación.", tag:"recovery", tagLabel:"Recuperación" },
+  { day:7, title:"Revisión semana 1", text:"¿Qué cambió? Anota energía, sueño y ánimo. El patrón se vuelve visible en 7 días.", tag:"energy", tagLabel:"Energía" },
+  { day:8, title:"Proteína y músculo", text:"0.8–1g de proteína por kg de peso corporal. Especialmente importante en fase lútea para reducir catabolismo.", tag:"energy", tagLabel:"Energía" },
+  { day:9, title:"Gestión del cortisol", text:"Elimina café después de las 13h si estás en fase lútea. El cortisol nocturno afecta directamente el sueño.", tag:"sleep", tagLabel:"Sueño" },
+  { day:10, title:"Fuerza y ciclo", text:"Lleva un diario de rendimiento. Notarás diferencias de 10–20% en fuerza entre fase folicular y lútea — es fisiología.", tag:"recovery", tagLabel:"Recuperación" },
+  { day:11, title:"Omega-3 y sueño", text:"1–2g de omega-3 con la cena. Reduce inflamación y mejora calidad del sueño, especialmente en lútea.", tag:"sleep", tagLabel:"Sueño" },
+  { day:12, title:"Brain fog: qué hacer", text:"Si tienes brain fog frecuente: revisa ferritina (debe estar >50), vitamina D y función tiroidea.", tag:"mental", tagLabel:"Mental" },
+  { day:13, title:"Ayuno e intermitencia", text:"El ayuno de 12–14h es bien tolerado en fase folicular. En fase lútea limita a 10–12h o evítalo si notas más hambre.", tag:"cycle", tagLabel:"Ciclo" },
+  { day:14, title:"Resumen y próximos pasos", text:"Genera tu PDF para la médica. Incluye patrones de sueño, energía, ciclo y las preguntas clave identificadas.", tag:"cycle", tagLabel:"Ciclo" },
+];
+
+function buildProtocol() {
+  const phases = ["menstruación","fase folicular","ovulación","fase lútea","ciclo irregular"];
+  document.getElementById('proto-sub').textContent = "Sincronizado con tu " + (phases[answers[0]] || "fase");
+
+  const premium = isPremium();
+  // Día actual del protocolo: avanza con la prueba, máximo 14
+  const currentDay = Math.min(Math.max(trialDay(), 1), 14);
+  const unlockedUpTo = premium ? 14 : FREE_DAYS;
+  document.getElementById('today-num').textContent = currentDay;
+
+  const row = document.getElementById('day-row');
+  row.innerHTML = '';
+  for (let i = 1; i <= 14; i++) {
+    const d = document.createElement('div');
+    d.className = 'day-pill'
+      + (i < currentDay && i <= unlockedUpTo ? ' done' : '')
+      + (i === currentDay && i <= unlockedUpTo ? ' today' : '')
+      + (i > unlockedUpTo ? ' locked' : '');
+    d.textContent = i;
+    if (i > unlockedUpTo) d.onclick = showPaywall;
+    row.appendChild(d);
+  }
+
+  const tagClass = { sleep:'tag-sleep', energy:'tag-energy', cycle:'tag-cycle', recovery:'tag-recovery', mental:'tag-mental' };
+
+  function card(item, isToday) {
+    const locked = !premium && item.day > unlockedUpTo;
+    const lockHtml = locked
+      ? `<div class="lock-overlay" onclick="showPaywall()">
+           <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+           <span>Desbloquear con Premium</span>
+         </div>`
+      : '';
+    return `<div class="proto-card${locked ? ' locked' : ''}">
+      <div class="proto-day">Día ${item.day}${isToday ? ' · HOY' : ''}</div>
+      <div class="proto-title">${item.title}</div>
+      <div class="proto-text">${item.text}</div>
+      <span class="tag ${tagClass[item.tag]}">${item.tagLabel}</span>
+      ${lockHtml}
+    </div>`;
+  }
+
+  const todayItem = protocolData[Math.min(currentDay, unlockedUpTo) - 1];
+  document.getElementById('today-card').innerHTML = card(todayItem, true);
+
+  // Resto de días: los gratuitos visibles + los bloqueados con blur (genera deseo de ver el contenido)
+  const rest = protocolData.filter(d => d.day !== todayItem.day);
+  document.getElementById('next-cards').innerHTML = rest.map(d => card(d, false)).join('');
+
+  // CTA al final del plan para usuarias gratuitas
+  if (!premium) {
+    document.getElementById('next-cards').innerHTML +=
+      `<button class="btn-primary" style="margin-top:6px" onclick="showPaywall()">Desbloquear los 14 días — 29 €</button>`;
+  }
+}
+
+/* ============ DEEP DIVE: biología femenina (método Stacy Sims) ============ */
+const FREE_SCI = 3; // primeras tarjetas gratis
+
+const scienceData = [
+  {
+    icon: "♀", bg: "#FDF0EB",
+    title: "No eres un hombre pequeño",
+    body: `Hasta 2014, menos del <strong>4–6% de los estudios en ciencia del deporte usaban solo mujeres</strong>, y muchas guías de nutrición y entrenamiento se extrapolaron de hombres jóvenes. Pero tu fisiología difiere en lo básico: en reposo y a intensidad baja-moderada <strong>oxidas proporcionalmente más grasa</strong> (mayor densidad mitocondrial tipo I y más lipoproteína lipasa), tienes <strong>menos masa muscular absoluta pero mejor resistencia a la fatiga</strong>, y tu termorregulación y volumen plasmático cambian a lo largo del ciclo.<br><br>Por eso los protocolos "universales" —ayunos largos, déficit calórico agresivo, cardio crónico— a menudo te dan lo contrario: <strong>cortisol elevado, supresión tiroidea, peor sueño y composición corporal estancada</strong>. No es que "tu cuerpo sea raro": es que se diseñó el plan para otro cuerpo.`,
+    action: `<strong>Acción:</strong> durante 1 mes anota energía, sueño, ánimo y rendimiento junto a tu fase del ciclo (o por semanas si es irregular). Ese patrón individual vale más que cualquier protocolo genérico.`,
+    ref: "Sims & Yeager, ROAR (2016) · Costello et al. 2014, Eur J Sport Sci — sesgo de sexo en la investigación · Devries 2016 — oxidación de grasa por sexo"
+  },
+  {
+    icon: "🛡", bg: "#EEF3FA",
+    title: "Estrógeno: tu hormona anabólica",
+    body: `El estradiol actúa sobre receptores (ERα y ERβ) presentes en <strong>músculo, hueso, cerebro, vasos sanguíneos e hígado</strong> — no solo en el aparato reproductor. Sus funciones "extra": estimula la <strong>síntesis y reparación muscular</strong>, mantiene el colágeno de tendones y piel, frena la resorción ósea (por eso la masa ósea cae rápido al perderlo), mejora la <strong>sensibilidad a la insulina</strong> y protege el endotelio vascular.<br><br>A partir de los ~35–40 el estradiol no baja en línea recta: <strong>fluctúa de forma errática</strong>, con picos y caídas bruscas. Esas oscilaciones —no la "falta" de hormona— explican la recuperación más lenta, el sueño fragmentado y los cambios de composición corporal sin haber cambiado nada. Es señalización hormonal volviéndose ruidosa, no falta de disciplina.`,
+    action: `<strong>Acción:</strong> la fuerza pesada activa rutas anabólicas (mTOR, células satélite) que compensan parte de la señal de estrógeno perdida. Es lo más parecido a una "terapia anabólica" que puedes hacer gratis — y suma colágeno + vitamina C 30–60 min antes de entrenar para tendones.`,
+    ref: "Chidi-Ogbolu & Baar 2019, Front Physiol — estrógeno y tejido músculo-tendinoso · Hansen 2018 — colágeno y síntesis tendinosa"
+  },
+  {
+    icon: "🌙", bg: "#F4EEF8",
+    title: "Progesterona y los despertares a las 3 am",
+    body: `En la fase lútea la progesterona <strong>sube tu temperatura central 0,3–0,5 °C</strong> (efecto termogénico), eleva el gasto metabólico en reposo <strong>+5–9% (~100–300 kcal/día)</strong> y es ligeramente <strong>catabólica</strong> —compite con el cortisol por receptores y favorece el uso de aminoácidos como combustible.<br><br>Su metabolito, la <strong>alopregnanolona</strong>, es un modulador positivo de los receptores GABA-A (el mismo sistema "calmante" sobre el que actúan los ansiolíticos). Cuando la progesterona cae en picado los días previos a la regla, ese efecto sedante desaparece de golpe: el sistema nervioso queda hiperexcitable y <strong>el sueño se fragmenta — de ahí los despertares a las 3–4 am</strong> y la irritabilidad premenstrual. La temperatura más alta también reduce el sueño profundo.`,
+    action: `<strong>Acción:</strong> en lútea baja el dormitorio a 18 °C, magnesio glicinato 300 mg de noche, proteína en la cena (estabiliza glucosa nocturna) y café solo hasta las 13 h. El glicinato cruza mejor a cerebro que el óxido de magnesio.`,
+    ref: "Baker & Driver 2007, Sleep Med — ciclo y arquitectura del sueño · Andréen et al. 2009 — alopregnanolona y GABA-A"
+  },
+  {
+    icon: "💪", bg: "#EBF5EE", premium: true,
+    title: "Resistencia anabólica: por qué ahora necesitas más proteína",
+    body: `Con la edad y la caída de estrógeno aparece la <strong>resistencia anabólica</strong>: el músculo necesita <em>más</em> leucina para disparar la misma síntesis proteica (MPS). El "umbral de leucina" sube de ~<strong>2 g a ~3–4 g por comida</strong>, lo que en la práctica significa <strong>30–40 g de proteína de alta calidad por comida</strong> en vez de los 20 g que bastaban a los 25.<br><br>Reparto > total: 3–4 tomas de 30–40 g a lo largo del día estimulan más MPS que la misma cantidad concentrada en la cena. Objetivo diario realista si entrenas: <strong>1,6–2,2 g/kg</strong>. La <strong>creatina monohidrato (3–5 g/día)</strong> tiene evidencia específica en mujeres —especialmente en peri y postmenopausia— sobre fuerza, masa muscular, densidad ósea y, en algunos estudios, memoria de trabajo y estado de ánimo. No requiere fase de carga.`,
+    action: `<strong>Acción:</strong> desayuno con ≥30 g de proteína (huevos + yogur griego, o batido) en lugar de café + tostada; creatina 3–5 g/día a cualquier hora, todos los días incluido el de descanso.`,
+    ref: "Moore et al. 2015, J Gerontol — dosis-respuesta de MPS por edad · Smith-Ryan et al. 2021, Nutrients — creatina en mujeres · Morton 2018 — meta-análisis proteína y fuerza"
+  },
+  {
+    icon: "🏋", bg: "#FDF0EB", premium: true,
+    title: "Levanta pesado. Salta. Esprinta.",
+    body: `El método Sims para 35+ prioriza <strong>intensidad alta y corta</strong> sobre volumen moderado crónico, por tres motivos fisiológicos:<br><br>① <strong>Fuerza pesada</strong> (cargas del 80–90%, 3–6 reps): recluta fibras tipo II —las que más se pierden con la edad— y mantiene potencia.<br>② <strong>Pliometría / saltos</strong>: la carga de impacto es un estímulo osteogénico directo; el hueso responde a la <em>velocidad</em> de la fuerza, no solo a su magnitud — clave cuando el estrógeno deja de protegerlo.<br>③ <strong>Sprints (SIT)</strong>: mejoran VO₂max, sensibilidad a la insulina y composición corporal con mucho menos tiempo y menos cortisol que el cardio largo.<br><br>El cardio constante de larga duración eleva cortisol de forma sostenida y, en mujeres con poca disponibilidad energética, puede empeorar composición corporal y sueño.`,
+    action: `<strong>Acción:</strong> 2–3 sesiones de fuerza pesada/semana + 1 de sprints (6–8 × 20–30 s con recuperación completa) + saltos 2–3 series cortas. Concentra lo intenso en folicular y ovulación, cuando recuperas mejor.`,
+    ref: "Sims & Yeager, Next Level (2022) · Stojanović et al. 2017 — pliometría y densidad ósea en mujeres · Gillen & Gibala 2014 — entrenamiento interválico breve"
+  },
+  {
+    icon: "⏱", bg: "#EEF3FA", premium: true,
+    title: "Ayuno: por qué no te funciona igual",
+    body: `El eje hormonal femenino es <strong>más sensible al déficit energético</strong> que el masculino. Las neuronas <strong>kisspeptina</strong> del hipotálamo, que regulan el ciclo, detectan baja disponibilidad de energía y reducen la señal reproductiva — un mecanismo evolutivo de protección. Entrenar en ayunas o alargar mucho la ventana de ayuno puede <strong>elevar cortisol, suprimir T3 (tiroides) y desregular el ciclo</strong>.<br><br>El concepto clave es <strong>disponibilidad energética</strong> (energía que queda para funciones fisiológicas tras descontar el ejercicio): por debajo de ~30 kcal/kg de masa magra/día aparece el RED-S —fatiga, mal sueño, amenorrea, pérdida ósea—. Lo que en un hombre se vende como "flexibilidad metabólica", en una mujer activa 35+ puede ser una bandera roja.`,
+    action: `<strong>Acción:</strong> come algo antes de entrenar (aunque sean 15 g de proteína o medio plátano). Ventana de ayuno máx. 12–14 h en folicular, 10–12 h en lútea — y ninguno si notas más hambre, peor sueño o ciclo alterado.`,
+    ref: "Mountjoy et al. 2018, Br J Sports Med — consenso RED-S · Nattiv et al. 2007 — tríada de la atleta femenina · Loucks 2003 — disponibilidad energética y LH"
+  },
+  {
+    icon: "❄", bg: "#F4EEF8", premium: true,
+    title: "Frío y calor según tu fase",
+    body: `El frío y el calor no son neutros respecto a tu ciclo. En <strong>fase lútea</strong> tu temperatura central ya está 0,3–0,5 °C más alta y el cortisol más sensible: un <strong>baño de hielo largo añade estrés fisiológico</strong> en vez de restarlo, y la inmersión en frío justo después de entrenar fuerza puede <strong>atenuar las adaptaciones de hipertrofia</strong> (frena la señal inflamatoria que el músculo necesita para crecer). En folicular se tolera mejor.<br><br>El <strong>calor (sauna)</strong>, en cambio, es bien tolerado en todas las fases y tiene evidencia sólida: la exposición regular se asocia a <strong>mejor salud cardiovascular, descenso de presión arterial y mejor sueño</strong>, además de un efecto de aclimatación útil para entrenar en calor.`,
+    action: `<strong>Acción:</strong> deja la inmersión en frío para folicular/post-ovulación y, si buscas hipertrofia, no la hagas en las 4–6 h tras la sesión de fuerza. Sauna 15–20 min, 2–3×/semana, cualquier fase.`,
+    ref: "Laukkanen et al. 2018, Mayo Clin Proc — sauna y mortalidad cardiovascular · Roberts et al. 2015 — frío post-ejercicio e hipertrofia"
+  },
+  {
+    icon: "🧭", bg: "#EBF5EE", premium: true,
+    title: "Perimenopausia: la transición invisible",
+    body: `La perimenopausia puede empezar a mediados de los 30 y durar de <strong>4 a 10 años</strong> antes de la última regla. El rasgo que más confunde: <strong>la FSH y el estradiol fluctúan día a día</strong>, así que una analítica aislada suele salir "normal" aunque ya tengas síntomas claros — los síntomas llegan <em>años antes</em> que los números estables.<br><br>El brain fog es real y tiene base neuroquímica: el estrógeno modula <strong>serotonina, dopamina y acetilcolina</strong> e influye en el metabolismo de glucosa del cerebro; sus oscilaciones afectan memoria de trabajo y concentración, sobre todo en la transición temprana, y para muchas mejora después. Los sofocos se asocian además a microdespertares que fragmentan el sueño.`,
+    action: `<strong>Acción:</strong> lleva a tu médica un diario de síntomas de 2–3 meses (no una analítica suelta) + pide ferritina (objetivo >50 ng/ml), vitamina D, perfil tiroideo completo (TSH + T4 libre) y, si procede, perfil lipídico. Pregunta abiertamente por terapia hormonal: la evidencia actual la considera segura y eficaz para muchas mujeres iniciada cerca de la menopausia.`,
+    ref: "Greendale et al. 2009, Neurology (estudio SWAN) — cognición en la transición · Harlow et al. 2012 (STRAW+10) — estadificación de la perimenopausia · The Menopause Society 2022 — posición sobre terapia hormonal"
+  }
+];
+
+function buildScience() {
+  const premium = isPremium();
+  const c = document.getElementById('sci-cards');
+  c.innerHTML = scienceData.map((s, i) => {
+    const locked = s.premium && !premium;
+    const chevOrLock = locked
+      ? `<svg class="sci-chevron" viewBox="0 0 24 24" fill="none" stroke="#C4644A" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>`
+      : `<svg class="sci-chevron" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
+    return `<div class="sci-card${locked ? ' locked' : ''}" id="sci-${i}">
+      <div class="sci-head" onclick="${locked ? 'showPaywall()' : `toggleSci(${i})`}">
+        <div class="sci-icon" style="background:${s.bg}">${s.icon}</div>
+        <div class="sci-title">${s.title}</div>
+        ${chevOrLock}
+      </div>
+      <div class="sci-body">
+        <p>${s.body}</p>
+        <div class="sci-action">${s.action}</div>
+        <div class="sci-ref">${s.ref}</div>
+      </div>
+    </div>`;
+  }).join('');
+  if (!premium) {
+    c.innerHTML += `<button class="btn-primary" style="margin-top:6px" onclick="showPaywall()">Desbloquear toda la ciencia — 29 €</button>`;
+  }
+}
+
+function toggleSci(i) {
+  document.getElementById('sci-' + i).classList.toggle('open');
+}
+/* ========================================================================== */
+
+renderQ();
+updateTrialBanner();
+buildScience();
+</script>
+</body>
+</html>
