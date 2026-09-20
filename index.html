@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -285,11 +286,6 @@ body {
     </svg>
   </div>
 
-  <div class="trial-banner" id="trial-banner">
-    <span id="trial-text"></span>
-    <a onclick="showPaywall()">Ver Premium</a>
-  </div>
-
   <div class="content">
 
     <!-- BIENVENIDA -->
@@ -463,43 +459,6 @@ body {
       <div id="sci-cards"></div>
     </div>
 
-    <!-- PAYWALL / PREMIUM -->
-    <div id="screen-paywall" class="screen">
-      <div class="paywall">
-        <h2>Tu cuerpo no es genérico.<br><em>Tu plan tampoco.</em></h2>
-        <p class="pw-sub">Has visto tu mapa corporal y la primera semana gratis. El plan completo se sincroniza con tu fase del ciclo durante los 14 días — con dosis, protocolos y la ciencia detrás de cada recomendación.</p>
-
-        <div class="price-card">
-          <div class="price-tag">Precio fundadora · Beta</div>
-          <div class="price-num">29&nbsp;€ <small>/ 3 meses</small></div>
-          <div class="price-old">Después de la beta: 49 €</div>
-        </div>
-
-        <div class="benefits">
-          <div class="benefit">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-            <span><strong>Plan completo de 14 días</strong> sincronizado con tu fase — entrenamiento, sueño, nutrición y suplementación con dosis concretas.</span>
-          </div>
-          <div class="benefit">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-            <span><strong>Resumen PDF para tu médica</strong> con tus patrones y los marcadores que pedir (ferritina, vitamina D, TSH).</span>
-          </div>
-          <div class="benefit">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-            <span><strong>Protocolos que se actualizan con tu ciclo</strong> — cada fase nueva, recomendaciones nuevas.</span>
-          </div>
-          <div class="benefit">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-            <span><strong>Acceso anticipado</strong> a nuevas funciones de la beta y voz directa en lo que construimos.</span>
-          </div>
-        </div>
-
-        <button class="btn-primary" onclick="activatePremium()">Activar Premium — 29 €</button>
-        <button class="btn-outline" onclick="goProtocol()">Seguir con la versión gratuita</button>
-        <p class="pw-fine">Sin permanencia. Cancela cuando quieras.<br>Basado en evidencia — sin venderte suplementos.</p>
-      </div>
-    </div>
-
   </div>
   <div class="nav">
     <button class="nav-btn active" id="nav-home" onclick="navTo('welcome','nav-home')">
@@ -526,70 +485,80 @@ body {
 </div>
 
 <script>
-/* ============ MONETIZACIÓN: prueba gratis + premium ============ */
-const FREE_DAYS = 7; // días del protocolo visibles gratis
-
-function store(key, val) { try { localStorage.setItem(key, val); } catch(e) {} }
-function read(key) { try { return localStorage.getItem(key); } catch(e) { return null; } }
-
-function isPremium() { return read('bs_premium') === '1'; }
-
-function startTrialIfNeeded() {
-  if (!read('bs_trial_start')) store('bs_trial_start', Date.now().toString());
-}
-
-// Día actual de la prueba (1 = primer día). Si no hay prueba iniciada, devuelve 0.
-function trialDay() {
-  const t = read('bs_trial_start');
-  if (!t) return 0;
-  return Math.floor((Date.now() - parseInt(t, 10)) / 86400000) + 1;
-}
-
-function trialActive() { return trialDay() >= 1 && trialDay() <= FREE_DAYS; }
-
-function updateTrialBanner() {
-  const banner = document.getElementById('trial-banner');
-  const txt = document.getElementById('trial-text');
-  if (isPremium()) {
-    banner.className = 'trial-banner show premium';
-    banner.innerHTML = '<span>Premium activo — plan completo desbloqueado</span>';
-    return;
-  }
-  if (trialDay() === 0) { banner.className = 'trial-banner'; return; }
-  banner.className = 'trial-banner show';
-  if (trialActive()) {
-    txt.textContent = 'Prueba gratis: día ' + trialDay() + ' de ' + FREE_DAYS;
-  } else {
-    txt.textContent = 'Tu prueba gratis ha terminado';
-  }
-}
-
-function showPaywall() {
-  showScreen('paywall');
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-}
-
-function activatePremium() {
-  // PROTOTIPO: aquí iría el checkout real (Stripe / Lemon Squeezy).
-  // Por ahora simula el pago y desbloquea el contenido.
-  store('bs_premium', '1');
-  updateTrialBanner();
-  buildScience();
-  if (answers.length >= 7) { buildProtocol(); }
-  goProtocol();
-}
+/* ============ Versión abierta: todo el contenido es gratis, sin registro ============ */
 
 function downloadDoctorPDF() {
-  if (!isPremium()) { showPaywall(); return; }
-  alert('PDF generado con tus datos');
+  if (answers.length < 7) { showScreen('quiz'); renderQ(); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const marginX = 20;
+  const pageWidth = 210;
+  const textWidth = pageWidth - marginX * 2;
+  let y = 22;
+
+  function addWrapped(text, size, color, gap, style) {
+    doc.setFont('helvetica', style || 'normal');
+    doc.setFontSize(size);
+    doc.setTextColor(color[0], color[1], color[2]);
+    const lines = doc.splitTextToSize(text, textWidth);
+    lines.forEach(line => {
+      if (y > 280) { doc.addPage(); y = 22; }
+      doc.text(line, marginX, y);
+      y += size * 0.5;
+    });
+    y += gap;
+  }
+
+  function addRule() {
+    doc.setDrawColor(224, 213, 204);
+    doc.line(marginX, y, pageWidth - marginX, y);
+    y += 7;
+  }
+
+  const phase = document.getElementById('cpb-phase-name').textContent;
+  const phaseDesc = document.getElementById('cpb-phase-desc').textContent;
+  const today = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  addWrapped('BodyShift — Resumen para tu consulta médica', 18, [27, 42, 74], 2, 'bold');
+  addWrapped('Generado el ' + today, 10, [160, 144, 128], 8);
+  addRule();
+
+  addWrapped('Fase del ciclo', 13, [27, 42, 74], 1, 'bold');
+  addWrapped(phase + ' — ' + phaseDesc, 11, [58, 48, 40], 6);
+
+  addWrapped('Patrones identificados', 13, [27, 42, 74], 2, 'bold');
+  [
+    ['Sueño y recuperación', 'sleep'],
+    ['Energía y metabolismo', 'energy'],
+    ['Recuperación física', 'recovery'],
+    ['Foco y estado mental', 'focus']
+  ].forEach(([label, id]) => {
+    const detail = document.getElementById(id + '-detail').textContent;
+    const lbl = document.getElementById(id + '-lbl').textContent;
+    const score = document.getElementById(id + '-score').textContent;
+    addWrapped(label + ' — ' + lbl + ' (' + score + ')', 11.5, [27, 42, 74], 0.5, 'bold');
+    addWrapped(detail, 10.5, [58, 48, 40], 5);
+  });
+
+  addRule();
+  addWrapped('Marcadores que puede tener sentido pedir', 13, [27, 42, 74], 1, 'bold');
+  const markers = ['Ferritina', 'Vitamina D'];
+  const focusLbl = document.getElementById('focus-lbl').textContent;
+  const sleepLbl = document.getElementById('sleep-lbl').textContent;
+  if (focusLbl === 'Moderado' || focusLbl === 'Alto') markers.push('Perfil tiroideo (TSH)');
+  if (sleepLbl === 'Bajo' || sleepLbl === 'Crítico') markers.push('Cortisol');
+  addWrapped(markers.join(', ') + '. Basado en los patrones señalados arriba — coméntalo con tu médica.', 10.5, [58, 48, 40], 6);
+
+  addRule();
+  addWrapped(
+    'Este documento es educativo y resume patrones autopercibidos a partir de un cuestionario. No es un diagnóstico ni sustituye una consulta médica profesional. BodyShift no ofrece diagnóstico ni tratamiento.',
+    9, [160, 144, 128], 0, 'italic'
+  );
+
+  doc.save('BodyShift-resumen-consulta.pdf');
 }
 
-// Parámetros de demo: ?reset=1 borra estado, ?premium=1 activa premium
-(function() {
-  const p = new URLSearchParams(location.search);
-  if (p.get('reset') === '1') { try { localStorage.removeItem('bs_premium'); localStorage.removeItem('bs_trial_start'); } catch(e) {} }
-  if (p.get('premium') === '1') store('bs_premium', '1');
-})();
 /* =============================================================== */
 
 const questions = [
@@ -658,7 +627,7 @@ function nextQ() {
   if (selectedOpt === null) return;
   answers[current] = selectedOpt;
   if (current < 6) { current++; renderQ(); }
-  else { startTrialIfNeeded(); updateTrialBanner(); buildMap(); buildProtocol(); showScreen('map'); document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); document.getElementById('nav-map').classList.add('active'); }
+  else { buildMap(); buildProtocol(); showScreen('map'); document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); document.getElementById('nav-map').classList.add('active'); }
 }
 
 function setScore(id, val, color) {
@@ -783,64 +752,47 @@ const protocolData = [
   { day:14, title:"Resumen y próximos pasos", text:"Genera tu PDF para la médica. Incluye patrones de sueño, energía, ciclo y las preguntas clave identificadas.", tag:"cycle", tagLabel:"Ciclo" },
 ];
 
+let currentProtocolDay = parseInt((function() { try { return localStorage.getItem('bs_current_day'); } catch(e) { return null; } })() || '1', 10);
+
 function buildProtocol() {
   const phases = ["menstruación","fase folicular","ovulación","fase lútea","ciclo irregular"];
   document.getElementById('proto-sub').textContent = "Sincronizado con tu " + (phases[answers[0]] || "fase");
 
-  const premium = isPremium();
-  // Día actual del protocolo: avanza con la prueba, máximo 14
-  const currentDay = Math.min(Math.max(trialDay(), 1), 14);
-  const unlockedUpTo = premium ? 14 : FREE_DAYS;
-  document.getElementById('today-num').textContent = currentDay;
+  document.getElementById('today-num').textContent = currentProtocolDay;
 
   const row = document.getElementById('day-row');
   row.innerHTML = '';
   for (let i = 1; i <= 14; i++) {
     const d = document.createElement('div');
-    d.className = 'day-pill'
-      + (i < currentDay && i <= unlockedUpTo ? ' done' : '')
-      + (i === currentDay && i <= unlockedUpTo ? ' today' : '')
-      + (i > unlockedUpTo ? ' locked' : '');
+    d.className = 'day-pill' + (i === currentProtocolDay ? ' today' : i < currentProtocolDay ? ' done' : '');
     d.textContent = i;
-    if (i > unlockedUpTo) d.onclick = showPaywall;
+    d.onclick = () => {
+      currentProtocolDay = i;
+      try { localStorage.setItem('bs_current_day', i); } catch(e) {}
+      buildProtocol();
+    };
     row.appendChild(d);
   }
 
   const tagClass = { sleep:'tag-sleep', energy:'tag-energy', cycle:'tag-cycle', recovery:'tag-recovery', mental:'tag-mental' };
 
   function card(item, isToday) {
-    const locked = !premium && item.day > unlockedUpTo;
-    const lockHtml = locked
-      ? `<div class="lock-overlay" onclick="showPaywall()">
-           <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-           <span>Desbloquear con Premium</span>
-         </div>`
-      : '';
-    return `<div class="proto-card${locked ? ' locked' : ''}">
+    return `<div class="proto-card">
       <div class="proto-day">Día ${item.day}${isToday ? ' · HOY' : ''}</div>
       <div class="proto-title">${item.title}</div>
       <div class="proto-text">${item.text}</div>
       <span class="tag ${tagClass[item.tag]}">${item.tagLabel}</span>
-      ${lockHtml}
     </div>`;
   }
 
-  const todayItem = protocolData[Math.min(currentDay, unlockedUpTo) - 1];
+  const todayItem = protocolData[currentProtocolDay - 1];
   document.getElementById('today-card').innerHTML = card(todayItem, true);
 
-  // Resto de días: los gratuitos visibles + los bloqueados con blur (genera deseo de ver el contenido)
   const rest = protocolData.filter(d => d.day !== todayItem.day);
   document.getElementById('next-cards').innerHTML = rest.map(d => card(d, false)).join('');
-
-  // CTA al final del plan para usuarias gratuitas
-  if (!premium) {
-    document.getElementById('next-cards').innerHTML +=
-      `<button class="btn-primary" style="margin-top:6px" onclick="showPaywall()">Desbloquear los 14 días — 29 €</button>`;
-  }
 }
 
 /* ============ DEEP DIVE: biología femenina (método Stacy Sims) ============ */
-const FREE_SCI = 3; // primeras tarjetas gratis
 
 const scienceData = [
   {
@@ -865,55 +817,57 @@ const scienceData = [
     ref: "Baker & Driver 2007, Sleep Med — ciclo y arquitectura del sueño · Andréen et al. 2009 — alopregnanolona y GABA-A"
   },
   {
-    icon: "💪", bg: "#EBF5EE", premium: true,
+    icon: "💪", bg: "#EBF5EE",
     title: "Resistencia anabólica: por qué ahora necesitas más proteína",
     body: `Con la edad y la caída de estrógeno aparece la <strong>resistencia anabólica</strong>: el músculo necesita <em>más</em> leucina para disparar la misma síntesis proteica (MPS). El "umbral de leucina" sube de ~<strong>2 g a ~3–4 g por comida</strong>, lo que en la práctica significa <strong>30–40 g de proteína de alta calidad por comida</strong> en vez de los 20 g que bastaban a los 25.<br><br>Reparto > total: 3–4 tomas de 30–40 g a lo largo del día estimulan más MPS que la misma cantidad concentrada en la cena. Objetivo diario realista si entrenas: <strong>1,6–2,2 g/kg</strong>. La <strong>creatina monohidrato (3–5 g/día)</strong> tiene evidencia específica en mujeres —especialmente en peri y postmenopausia— sobre fuerza, masa muscular, densidad ósea y, en algunos estudios, memoria de trabajo y estado de ánimo. No requiere fase de carga.`,
     action: `<strong>Acción:</strong> desayuno con ≥30 g de proteína (huevos + yogur griego, o batido) en lugar de café + tostada; creatina 3–5 g/día a cualquier hora, todos los días incluido el de descanso.`,
     ref: "Moore et al. 2015, J Gerontol — dosis-respuesta de MPS por edad · Smith-Ryan et al. 2021, Nutrients — creatina en mujeres · Morton 2018 — meta-análisis proteína y fuerza"
   },
   {
-    icon: "🏋", bg: "#FDF0EB", premium: true,
+    icon: "🏋", bg: "#FDF0EB",
     title: "Levanta pesado. Salta. Esprinta.",
     body: `El método Sims para 35+ prioriza <strong>intensidad alta y corta</strong> sobre volumen moderado crónico, por tres motivos fisiológicos:<br><br>① <strong>Fuerza pesada</strong> (cargas del 80–90%, 3–6 reps): recluta fibras tipo II —las que más se pierden con la edad— y mantiene potencia.<br>② <strong>Pliometría / saltos</strong>: la carga de impacto es un estímulo osteogénico directo; el hueso responde a la <em>velocidad</em> de la fuerza, no solo a su magnitud — clave cuando el estrógeno deja de protegerlo.<br>③ <strong>Sprints (SIT)</strong>: mejoran VO₂max, sensibilidad a la insulina y composición corporal con mucho menos tiempo y menos cortisol que el cardio largo.<br><br>El cardio constante de larga duración eleva cortisol de forma sostenida y, en mujeres con poca disponibilidad energética, puede empeorar composición corporal y sueño.`,
     action: `<strong>Acción:</strong> 2–3 sesiones de fuerza pesada/semana + 1 de sprints (6–8 × 20–30 s con recuperación completa) + saltos 2–3 series cortas. Concentra lo intenso en folicular y ovulación, cuando recuperas mejor.`,
     ref: "Sims & Yeager, Next Level (2022) · Stojanović et al. 2017 — pliometría y densidad ósea en mujeres · Gillen & Gibala 2014 — entrenamiento interválico breve"
   },
   {
-    icon: "⏱", bg: "#EEF3FA", premium: true,
+    icon: "⏱", bg: "#EEF3FA",
     title: "Ayuno: por qué no te funciona igual",
     body: `El eje hormonal femenino es <strong>más sensible al déficit energético</strong> que el masculino. Las neuronas <strong>kisspeptina</strong> del hipotálamo, que regulan el ciclo, detectan baja disponibilidad de energía y reducen la señal reproductiva — un mecanismo evolutivo de protección. Entrenar en ayunas o alargar mucho la ventana de ayuno puede <strong>elevar cortisol, suprimir T3 (tiroides) y desregular el ciclo</strong>.<br><br>El concepto clave es <strong>disponibilidad energética</strong> (energía que queda para funciones fisiológicas tras descontar el ejercicio): por debajo de ~30 kcal/kg de masa magra/día aparece el RED-S —fatiga, mal sueño, amenorrea, pérdida ósea—. Lo que en un hombre se vende como "flexibilidad metabólica", en una mujer activa 35+ puede ser una bandera roja.`,
     action: `<strong>Acción:</strong> come algo antes de entrenar (aunque sean 15 g de proteína o medio plátano). Ventana de ayuno máx. 12–14 h en folicular, 10–12 h en lútea — y ninguno si notas más hambre, peor sueño o ciclo alterado.`,
     ref: "Mountjoy et al. 2018, Br J Sports Med — consenso RED-S · Nattiv et al. 2007 — tríada de la atleta femenina · Loucks 2003 — disponibilidad energética y LH"
   },
   {
-    icon: "❄", bg: "#F4EEF8", premium: true,
+    icon: "❄", bg: "#F4EEF8",
     title: "Frío y calor según tu fase",
     body: `El frío y el calor no son neutros respecto a tu ciclo. En <strong>fase lútea</strong> tu temperatura central ya está 0,3–0,5 °C más alta y el cortisol más sensible: un <strong>baño de hielo largo añade estrés fisiológico</strong> en vez de restarlo, y la inmersión en frío justo después de entrenar fuerza puede <strong>atenuar las adaptaciones de hipertrofia</strong> (frena la señal inflamatoria que el músculo necesita para crecer). En folicular se tolera mejor.<br><br>El <strong>calor (sauna)</strong>, en cambio, es bien tolerado en todas las fases y tiene evidencia sólida: la exposición regular se asocia a <strong>mejor salud cardiovascular, descenso de presión arterial y mejor sueño</strong>, además de un efecto de aclimatación útil para entrenar en calor.`,
     action: `<strong>Acción:</strong> deja la inmersión en frío para folicular/post-ovulación y, si buscas hipertrofia, no la hagas en las 4–6 h tras la sesión de fuerza. Sauna 15–20 min, 2–3×/semana, cualquier fase.`,
     ref: "Laukkanen et al. 2018, Mayo Clin Proc — sauna y mortalidad cardiovascular · Roberts et al. 2015 — frío post-ejercicio e hipertrofia"
   },
   {
-    icon: "🧭", bg: "#EBF5EE", premium: true,
+    icon: "🧭", bg: "#EBF5EE",
     title: "Perimenopausia: la transición invisible",
     body: `La perimenopausia puede empezar a mediados de los 30 y durar de <strong>4 a 10 años</strong> antes de la última regla. El rasgo que más confunde: <strong>la FSH y el estradiol fluctúan día a día</strong>, así que una analítica aislada suele salir "normal" aunque ya tengas síntomas claros — los síntomas llegan <em>años antes</em> que los números estables.<br><br>El brain fog es real y tiene base neuroquímica: el estrógeno modula <strong>serotonina, dopamina y acetilcolina</strong> e influye en el metabolismo de glucosa del cerebro; sus oscilaciones afectan memoria de trabajo y concentración, sobre todo en la transición temprana, y para muchas mejora después. Los sofocos se asocian además a microdespertares que fragmentan el sueño.`,
     action: `<strong>Acción:</strong> lleva a tu médica un diario de síntomas de 2–3 meses (no una analítica suelta) + pide ferritina (objetivo >50 ng/ml), vitamina D, perfil tiroideo completo (TSH + T4 libre) y, si procede, perfil lipídico. Pregunta abiertamente por terapia hormonal: la evidencia actual la considera segura y eficaz para muchas mujeres iniciada cerca de la menopausia.`,
     ref: "Greendale et al. 2009, Neurology (estudio SWAN) — cognición en la transición · Harlow et al. 2012 (STRAW+10) — estadificación de la perimenopausia · The Menopause Society 2022 — posición sobre terapia hormonal"
+  },
+  {
+    icon: "🫁", bg: "#FDF0EB",
+    title: "Respiración: la palanca más rápida para bajar cortisol",
+    body: `El sistema nervioso autónomo tiene una palanca que puedes accionar directamente en segundos: la respiración. Cuando exhalas más lento de lo que inhalas, activas el <strong>nervio vago</strong> y aumentas la variabilidad de la frecuencia cardíaca (HRV) — el marcador más fiable de que el sistema parasimpático ("descansa y digiere") está tomando el control sobre el simpático ("lucha o huida").<br><br>La técnica con más evidencia reciente es el <strong>suspiro fisiológico</strong> (physiological sigh): dos inhalaciones nasales seguidas (la segunda corta, para re-expandir alvéolos colapsados) + una exhalación larga y lenta por la boca. Un estudio de Stanford (2023) que comparó esta técnica con mindfulness y respiración en caja durante 5 min/día a lo largo de un mes encontró que el suspiro cíclico fue el que más mejoró el estado de ánimo y más redujo la frecuencia respiratoria en reposo — el efecto es prácticamente inmediato, no acumulativo como la meditación.<br><br>Esto conecta directamente con lo que pasa en tu <strong>fase lútea</strong>: cuando la progesterona cae y su metabolito calmante (alopregnanolona) desaparece de golpe, el sistema nervioso queda hiperexcitable. La respiración lenta es una de las pocas herramientas que actúa sobre ese mismo eje en minutos, sin depender de que cambie ninguna hormona.`,
+    action: `<strong>Acción:</strong> 5 minutos de suspiro fisiológico antes de dormir (especialmente en fase lútea): inhala por la nariz, encima una segunda inhalación corta sin exhalar, luego exhala largo y lento por la boca. Repite. Antes de entrenar o en momentos de estrés agudo, usa respiración de caja (4s inhalar · 4s retener · 4s exhalar · 4s retener) para bajar la activación sin perder alerta.`,
+    ref: "Balban et al. 2023, Cell Reports Medicine — suspiro fisiológico vs. mindfulness · Zaccaro et al. 2018, Front Hum Neurosci — respiración lenta y sistema nervioso autónomo · Jerath et al. 2006, Med Hypotheses — mecanismo neurofisiológico de la respiración lenta"
   }
 ];
 
 function buildScience() {
-  const premium = isPremium();
   const c = document.getElementById('sci-cards');
   c.innerHTML = scienceData.map((s, i) => {
-    const locked = s.premium && !premium;
-    const chevOrLock = locked
-      ? `<svg class="sci-chevron" viewBox="0 0 24 24" fill="none" stroke="#C4644A" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>`
-      : `<svg class="sci-chevron" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
-    return `<div class="sci-card${locked ? ' locked' : ''}" id="sci-${i}">
-      <div class="sci-head" onclick="${locked ? 'showPaywall()' : `toggleSci(${i})`}">
+    return `<div class="sci-card" id="sci-${i}">
+      <div class="sci-head" onclick="toggleSci(${i})">
         <div class="sci-icon" style="background:${s.bg}">${s.icon}</div>
         <div class="sci-title">${s.title}</div>
-        ${chevOrLock}
+        <svg class="sci-chevron" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <div class="sci-body">
         <p>${s.body}</p>
@@ -922,9 +876,6 @@ function buildScience() {
       </div>
     </div>`;
   }).join('');
-  if (!premium) {
-    c.innerHTML += `<button class="btn-primary" style="margin-top:6px" onclick="showPaywall()">Desbloquear toda la ciencia — 29 €</button>`;
-  }
 }
 
 function toggleSci(i) {
@@ -933,7 +884,6 @@ function toggleSci(i) {
 /* ========================================================================== */
 
 renderQ();
-updateTrialBanner();
 buildScience();
 </script>
 </body>
